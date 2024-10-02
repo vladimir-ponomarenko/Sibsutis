@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 C = 3 * 10**8  # Скорость света, м/с
 THERMAL_NOISE_FLOOR_DBM_HZ = -174  # Уровень теплового шума, дБм/Гц
 
@@ -87,7 +88,7 @@ class NetworkPlanner:
         plt.show()
 
     def plot_cost_231(self):
-        distances_m = np.arange(1, 1000)
+        distances_m = np.arange(1, 10000)
         path_loss_cost = [self._calculate_cost_231(distance, "DU") for distance in distances_m]
         path_loss_fspl = self._calculate_fspl(distances_m)
 
@@ -134,7 +135,7 @@ class NetworkPlanner:
             return -(4.78 * (np.log10(self.frequency_ghz * 10**3))**2 - 18.33 * np.log10(self.frequency_ghz * 10**3) + 35.94)
 
     def _parameter_a(self, environment_type):
-        mobile_height_m = 1
+        mobile_height_m = 7.5
         if environment_type in ("DU", "U"):
             return 3.2 * (np.log10(11.75 * mobile_height_m))**2 - 4.97
         elif environment_type in ("SU", "RURAL", "ROAD"):
@@ -164,20 +165,20 @@ class NetworkPlanner:
 
     def calculate_bs_coverage(self):
         radius_umi = 500 * 10**-3
-        radius_walf = 5500 * 10**-3
+        radius_cost = 900 * 10**-3
 
         area_umi = 1.95 * radius_umi**2
-        area_walf = 1.95 * radius_walf**2
+        area_cost = 1.95 * radius_cost**2
 
         print(f"Радиус Базовой станции для модели UMiNLOS = {radius_umi:.3f} км")
-        print(f"Радиус Базовой станции для модели Walfish-Ikegami = {radius_walf:.3f} км")
+        print(f"Радиус Базовой станции для модели Cost231 = {radius_cost:.3f} км")
         print(f"Площадь одной базовой станции для модели UMiNLOS = {area_umi:.3f} км кв")
-        print(f"Площадь одной базовой станции для модели Walfish-Ikegami = {area_walf:.3f} км кв")
+        print(f"Площадь одной базовой станции для модели Cost231 = {area_cost:.3f} км кв")
 
         bs_count_umi = self.area_business_centers_km2 / area_umi
-        bs_count_walf = self.area_total_km2 / area_walf
+        bs_count_cost = self.area_total_km2 / area_cost
         print(f"Необходимое количество базовых станций для модели UMiNLOS: {bs_count_umi:.2f}")
-        print(f"Необходимое количество базовых станций для модели Walfish-Ikegami: {bs_count_walf:.2f}")
+        print(f"Необходимое количество базовых станций для модели Cost231: {bs_count_cost:.2f}")
 
 planner = NetworkPlanner()
 planner.plot_umi_nlos()
