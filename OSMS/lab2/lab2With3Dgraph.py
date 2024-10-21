@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
-
+# Константы и параметры
 C = 3 * 10**8  # Скорость света, м/с
 THERMAL_NOISE_FLOOR_DBM_HZ = -174  # Уровень теплового шума, дБм/Гц
 
@@ -119,6 +120,79 @@ class NetworkPlanner:
         self._configure_plot("Потери сигнала, дБ", "Расстояние между приемником и передатчиком, м")
         plt.show()
 
+    def plot_all_models_3d(self):
+        distances_m = np.arange(1, 10000)
+        distances_km = distances_m / 1000
+        frequencies_ghz = np.arange(0.15, 2.0, 0.01)
+
+        distances_m, frequencies_ghz = np.meshgrid(distances_m, frequencies_ghz)
+
+        path_loss_cost = np.zeros_like(distances_m, dtype=float)
+        for i, frequency_ghz in enumerate(frequencies_ghz[:, 0]):
+            for j, distance_m in enumerate(distances_m[0, :]):
+                if 150 <= frequency_ghz * 10**3 < 1500:
+                    A = 69.55
+                    B = 26.16
+                elif 1500 <= frequency_ghz * 10**3 <= 2000:
+                    A = 46.3
+                    B = 33.9
+                else:
+                    raise ValueError("Частота вне допустимого диапазона (150 МГц - 2 ГГц)")
+
+                path_loss_cost[i, j] = (A + B * np.log10(frequency_ghz * 10**3) - 13.82 * np.log10(50) -
+                                        self._parameter_a("DU") +
+                                        self._parameter_s(distance_m/1000) * np.log10(distance_m/1000) +
+                                        self._clutter_loss("DU"))
+
+        path_loss_umi = 26 * np.log10(frequencies_ghz) + 22.7 + 36.7 * np.log10(distances_m)
+        path_loss_walfish = 42.6 + 20 * np.log10(frequencies_ghz * 10**3) + 26 * np.log10(distances_km)
+
+        fig = plt.figure(figsize=(15, 10))  # Увеличиваем размер фигуры
+
+        # Общий график
+        ax_main = fig.add_subplot(221, projection='3d')
+        ax_main.plot_surface(distances_m, frequencies_ghz, path_loss_cost, alpha=0.6, label="COST 231")
+        ax_main.plot_surface(distances_m, frequencies_ghz, path_loss_umi, alpha=0.4, label="UMiNLOS")
+        ax_main.plot_surface(distances_m, frequencies_ghz, path_loss_walfish, alpha=0.8, label="Walfish-Ikegami")
+        ax_main.set_xlabel("Расстояние, м")
+        ax_main.set_ylabel("Частота, ГГц")
+        ax_main.set_zlabel("Потери сигнала, дБ")
+        ax_main.set_title("Все модели")
+        ax_main.legend()
+        ax_main.view_init(elev=15, azim=-25)
+
+        # Создаем три subplot'а в один ряд
+        ax1 = fig.add_subplot(222, projection='3d')
+        ax2 = fig.add_subplot(223, projection='3d')
+        ax3 = fig.add_subplot(224, projection='3d')
+
+        # COST 231
+        ax1.plot_surface(distances_m, frequencies_ghz, path_loss_cost, alpha=0.8, label="COST 231")
+        ax1.set_xlabel("Расстояние, м")
+        ax1.set_ylabel("Частота, ГГц")
+        ax1.set_zlabel("Потери сигнала, дБ")
+        ax1.set_title("COST 231")
+        ax1.view_init(elev=15, azim=-25)
+
+        # UMiNLOS
+        ax2.plot_surface(distances_m, frequencies_ghz, path_loss_umi, alpha=0.8, label="UMiNLOS")
+        ax2.set_xlabel("Расстояние, м")
+        ax2.set_ylabel("Частота, ГГц")
+        ax2.set_zlabel("Потери сигнала, дБ")
+        ax2.set_title("UMiNLOS")
+        ax2.view_init(elev=15, azim=-25)
+
+        # Walfish-Ikegami
+        ax3.plot_surface(distances_m, frequencies_ghz, path_loss_walfish, alpha=0.8, label="Walfish-Ikegami")
+        ax3.set_xlabel("Расстояние, м")
+        ax3.set_ylabel("Частота, ГГц")
+        ax3.set_zlabel("Потери сигнала, дБ")
+        ax3.set_title("Walfish-Ikegami")
+        ax3.view_init(elev=15, azim=-25)
+
+        plt.tight_layout()  # Автоматически регулирует подписи, чтобы они не перекрывались
+        plt.show()
+
     def _calculate_fspl(self, distances):
         return 20 * np.log10((4 * np.pi * self.frequency_hz * distances) / C)
 
@@ -180,8 +254,10 @@ class NetworkPlanner:
         print(f"Необходимое количество базовых станций для модели UMiNLOS: {bs_count_umi:.2f}")
         print(f"Необходимое количество базовых станций для модели Cost231: {bs_count_cost:.2f}")
 
+# Создание объекта планировщика сети и выполнение расчетов
 planner = NetworkPlanner()
-planner.plot_umi_nlos()
-planner.plot_cost_231()
-planner.plot_all_models()
+# planner.plot_umi_nlos()
+# planner.plot_cost_231()
+# planner.plot_all_models()
+planner.plot_all_models_3d() 
 planner.calculate_bs_coverage()
