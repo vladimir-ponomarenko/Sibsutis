@@ -1,0 +1,14 @@
+Для проверки доступности хостов были использованы команды:
+ansible -i inventory/hosts.yml -m ping all
+ansible -i inventory/hosts.yml -m ping host1
+
+Для сбора детальной информации о хостах была использована команда:
+ansible -i inventory/hosts.yml -m setup host1
+
+Были выполнены следующие ad-hoc команды:
+ansible -i inventory/hosts.yml -m ping host1,host2
+ansible -i inventory/hosts.yml -m shell -a 'hostname' host1,host2
+
+Playbook был выполнен с помощью команды:
+ansible-playbook -i inventory/hosts.yml playbooks/gather_info.yml
+ansible -i inventory/hosts.yml -m shell -a 'cat /home/ansible/system_info_{{ inventory_hostname }}.yml' all

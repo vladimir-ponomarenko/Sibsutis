@@ -1,0 +1,11 @@
+---
+- name: Gather system information
+  hosts: all
+  tasks:
+    - name: Gather system facts
+      ansible.builtin.setup:
+
+    - name: Create system info file
+      ansible.builtin.template:
+        src: templates/system_info.j2 
+        dest: "/home/ansible/system_info_{{ inventory_hostname }}.yml"
