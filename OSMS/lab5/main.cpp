@@ -89,6 +89,8 @@ int main(){
     vector<int> data_with_errors = data_with_crc2;
 
     for(int i = 0; i<total_iterations; ++i){
+        vector<int> data_with_errors = data_with_crc2;
+
         data_with_errors[i] ^= 1;
 
         if(check_errors(data_with_errors, generator)){
