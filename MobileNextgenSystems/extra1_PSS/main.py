@@ -20,7 +20,7 @@ def generate_pss(nid: int) -> np.ndarray:
 
 def plot_constellations(pss_sequences: dict):
     """
-    Строит и сохраняет констелляционные диаграммы для PSS.
+    Строит и сохраняет диаграммы для PSS.
     """
     fig, axes = plt.subplots(3, 3, figsize=(12, 12))
     fig.suptitle('Диаграммы PSS', fontsize=16, y=0.95)
