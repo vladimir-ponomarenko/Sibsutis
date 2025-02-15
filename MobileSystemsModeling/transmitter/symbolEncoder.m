@@ -7,7 +7,7 @@ function encodedBits = symbolEncoder(message)
     [alphabet, bitsPerSymbol] = getAlphabet();
 
     if ~ischar(message) || ~isvector(message)
-        error('[Encoder] Входное сообщение на должно быть вектором символов.');
+        error('[SymbolEncoder] Входное сообщение на должно быть вектором символов.');
     end
 
     encodedBits = [];
@@ -15,7 +15,7 @@ function encodedBits = symbolEncoder(message)
         alphabetCharIndex = find(alphabet == message(i));
 
         if isempty(alphabetCharIndex)
-            error('[Encoder] Символ %s отсутствует в алфавите.', message(i));
+            error('[SymbolEncoder] Символ %s отсутствует в алфавите.', message(i));
         end
 
     decimalValue = alphabetCharIndex(1) - 1;

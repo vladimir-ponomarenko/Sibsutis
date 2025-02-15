@@ -7,12 +7,12 @@ function decodedMessage = symbolDecoder(encodedBits)
     [alphabet, bitsPerSymbol] = getAlphabet();
 
     if ~isnumeric(encodedBits) || ~isvector(encodedBits) || any((encodedBits ~= 0) & (encodedBits ~= 1))
-        error('[Decoder] Входные биты должны быть числовым вектором, содержащим только 0 и 1.');
+        error('[SymbolDecoder] Входные биты должны быть числовым вектором, содержащим только 0 и 1.');
     end
 
     numSymbols = length(encodedBits)/bitsPerSymbol;
     if rem(length(encodedBits), bitsPerSymbol) ~= 0
-        warning('[Decoder] Длина входной битовой последовательности не кратна количеству бит на символ. Лишние биты будут проигнорированы.');
+        warning('[SymbolDecoder] Длина входной битовой последовательности не кратна количеству бит на символ. Лишние биты будут проигнорированы.');
         numSymbols = floor(numSymbols);
     end
 
