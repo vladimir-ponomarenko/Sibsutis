@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  dhcp_server:
+    build: .
+    image: my-dhcp-server
+    container_name: dhcp_server_container
+    cap_add:
+      - NET_ADMIN        # Для работы с сетью
+      - NET_RAW          # Для работы с сырыми сокетами
+    networks:
+      dhcp_net:
+        ipv4_address: 172.20.0.2  # Фиксированный IP для сервера
+
+  dhcp_client:
+    build: ./client  # Сборка из каталога ./client
+    image: my-dhcp-client
+    container_name: dhcp_client_container
+    networks:
+      dhcp_net:  # Подключаем клиента к той же сети
+         # IP-адрес не указываем, клиент должен получить его от сервера
+    depends_on:
+      - dhcp_server
+
+networks:
+  dhcp_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
