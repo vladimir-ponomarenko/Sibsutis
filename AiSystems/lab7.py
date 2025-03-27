@@ -52,6 +52,7 @@ X_test_flat = X_test_gray.reshape(n_test_samples, -1)
 
 X_train_flat, X_temp, y_train, y_temp = train_test_split(
     X_train_flat, y_train, test_size=0.3, random_state=42
+)
 X_val_flat, X_test_flat, y_val, y_test = train_test_split(
     X_temp, y_temp, test_size=0.5, random_state=42
 )

@@ -320,7 +320,7 @@ private:
         memset(response.sname, 0, sizeof(response.sname));
         memset(response.file, 0, sizeof(response.file));
 
-        // Add magic cookie
+        // Magic cookie
         response.options[0] = 99;
         response.options[1] = 130;
         response.options[2] = 83;
@@ -374,7 +374,7 @@ private:
             return false;
         }
         int option_index = offset + 4; // Skip magic cookie
-        while (option_index < 548) { // Limit to structure size
+        while (option_index < 548) {
             if (option_index >= 548) break;
             uint8_t option_code = raw_data[option_index++];
             if (option_code == 0) continue;
@@ -460,7 +460,6 @@ private:
             destination_addr.sin_addr = response.yiaddr;
         }
     
-        // Отладочный вывод
         uint8_t message_type = get_dhcp_message_type(response, sizeof(response));
         std::cout << "Sending DHCP response (type " << (int)message_type << ") to "
                   << mac_to_string(response.chaddr, response.hlen) << " with IP "
