@@ -6,14 +6,14 @@ services:
     image: my-dhcp-server
     container_name: dhcp_server_container
     cap_add:
-      - NET_ADMIN        # Для работы с сетью
-      - NET_RAW          # Для работы с сырыми сокетами
+      - NET_ADMIN
+      - NET_RAW
     networks:
       dhcp_net:
-        ipv4_address: 172.20.0.2  # Фиксированный IP для сервера
+        ipv4_address: 172.20.0.2
 
   dhcp_client:
-    build: ./client  # Сборка из каталога ./client
+    build: ./client
     image: my-dhcp-client
     container_name: dhcp_client_container
     networks:
