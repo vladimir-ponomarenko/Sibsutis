@@ -24,73 +24,79 @@
    - Публикуется (p, g, y) - открытый ключ
    - Сохраняется x - закрытый ключ
 
-### Процесс подписания
-Для хеша H сообщения (полученного через SHA-256):
+### Процесс подписания (побайтовый)
+Согласно требованиям задания, хеш-функция SHA-256 обрабатывается побайтово:
 
-1. **Выбор случайного числа**:
-   - Выбирается случайное число k ∈ [1, p-1] такое, что НОД(k, p-1) = 1
-   - Это обеспечивает существование обратного элемента k^(-1)
+1. **Разбиение хеша на байты**:
+   - Хеш H разбивается на 32 байта: H = [h₁, h₂, ..., h₃₂]
+   - Каждый байт hᵢ подписывается отдельно
 
-2. **Вычисление r**:
-   - r = g^k mod p
-   - r является частью подписи
+2. **Для каждого байта hᵢ**:
+   - Выбирается случайное число kᵢ ∈ [1, p-1] такое, что НОД(kᵢ, p-1) = 1
+   - Вычисляется rᵢ = g^(kᵢ) mod p
+   - Вычисляется sᵢ = kᵢ^(-1) * (hᵢ - x*rᵢ) mod (p-1)
 
-3. **Вычисление s**:
-   - s = k^(-1) * (H - x*r) mod (p-1)
-   - s является второй частью подписи
+3. **Результат**: Подпись [(r₁, s₁), (r₂, s₂), ..., (r₃₂, s₃₂)]
 
-4. **Результат**: Подпись (r, s)
+### Процесс проверки (побайтовый)
+Для подписи [(r₁, s₁), (r₂, s₂), ..., (r₃₂, s₃₂)] и хеша H = [h₁, h₂, ..., h₃₂]:
 
-### Процесс проверки
-Для подписи (r, s) и хеша H:
-
-1. **Проверка диапазонов**:
-   - Проверяется: 1 ≤ r < p и 1 ≤ s < p-1
+1. **Проверка длины**:
+   - Проверяется: длина подписи = 32 пары (r, s)
    - Если условие не выполнено, подпись неверна
 
-2. **Проверка подписи**:
-   - Вычисляется левая часть: g^H mod p
-   - Вычисляется правая часть: (y^r * r^s) mod p
-   - Проверяется: g^H ≡ y^r * r^s (mod p)
+2. **Для каждой пары (rᵢ, sᵢ) и байта hᵢ**:
+   - Проверяется: 1 ≤ rᵢ < p и 1 ≤ sᵢ < p-1
+   - Вычисляется левая часть: g^(hᵢ) mod p
+   - Вычисляется правая часть: (y^(rᵢ) * rᵢ^(sᵢ)) mod p
+   - Проверяется: g^(hᵢ) ≡ y^(rᵢ) * rᵢ^(sᵢ) (mod p)
 
-3. **Результат**: True, если подпись верна, иначе False
+3. **Результат**: True, если все 32 проверки прошли успешно, иначе False
 
-### Алгоритм в коде
+### Алгоритм в коде (побайтовый)
 ```python
-def elgamal_sign(hash_digest: bytes, p: int, g: int, x: int) -> Tuple[int, int]:
-    # 1. Преобразование хеша в число
-    h = int.from_bytes(hash_digest, byteorder='big') % (p - 1)
+def elgamal_sign(hash_digest: bytes, p: int, g: int, x: int) -> list[Tuple[int, int]]:
+    signature = []
     
-    # 2. Выбор случайного k
-    while True:
-        k = random.randrange(1, p - 1)
-        if extended_gcd(k, p - 1)[0] == 1:
-            break
+    for byte in hash_digest:
+        # 1. Выбор случайного k для каждого байта
+        while True:
+            k = random.randrange(1, p - 1)
+            if extended_gcd(k, p - 1)[0] == 1:
+                break
+        
+        # 2. Вычисление r
+        r = mod_pow(g, k, p)
+        
+        # 3. Вычисление s
+        k_inv = mod_inverse(k, p - 1)
+        h = byte % (p - 1)
+        s = (k_inv * (h - x * r)) % (p - 1)
+        
+        signature.append((r, s))
     
-    # 3. Вычисление r
-    r = mod_pow(g, k, p)
-    
-    # 4. Вычисление s
-    k_inv = mod_inverse(k, p - 1)
-    s = (k_inv * (h - x * r)) % (p - 1)
-    
-    return r, s
+    return signature
 
-def elgamal_verify(hash_digest: bytes, signature: Tuple[int, int], p: int, g: int, y: int) -> bool:
-    r, s = signature
-    
-    # 1. Проверка диапазонов
-    if r < 1 or r >= p or s < 1 or s >= p - 1:
+def elgamal_verify(hash_digest: bytes, signature: list[Tuple[int, int]], p: int, g: int, y: int) -> bool:
+    if len(signature) != len(hash_digest):
         return False
     
-    # 2. Преобразование хеша
-    h = int.from_bytes(hash_digest, byteorder='big') % (p - 1)
+    for i, (r, s) in enumerate(signature):
+        # 1. Проверка диапазонов
+        if r < 1 or r >= p or s < 1 or s >= p - 1:
+            return False
+        
+        # 2. Получение байта хеша
+        h = hash_digest[i] % (p - 1)
+        
+        # 3. Проверка подписи
+        left = mod_pow(g, h, p)
+        right = (mod_pow(y, r, p) * mod_pow(r, s, p)) % p
+        
+        if left != right:
+            return False
     
-    # 3. Проверка подписи
-    left = mod_pow(g, h, p)
-    right = (mod_pow(y, r, p) * mod_pow(r, s, p)) % p
-    
-    return left == right
+    return True
 ```
 
 ## Использование
@@ -114,7 +120,7 @@ python main.py verify file.txt --key public.key --sig file.sig
 - `generate` - генерация пары ключей
 - `sign` - подписание файла
 - `verify` - проверка подписи
-- `--bits` - размер простого числа в битах (по умолчанию 32)
+- `--bits` - размер простого числа в битах (по умолчанию 128)
 - `--pub` - файл для открытого ключа
 - `--priv` - файл для закрытого ключа
 - `--key` - файл с ключом для подписания/проверки

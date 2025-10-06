@@ -161,7 +161,7 @@ plt.grid(True)
 
 plt.subplot(2, 2, 3)
 plt.hist(vals, bins=50, density=True, alpha=0.7, color="b", edgecolor="k")
-plt.title("Функция распределения (PDF) модуля принятого сигнала")
+plt.title("Функция распределения модуля принятого сигнала")
 plt.xlabel("|r_sum|")
 plt.ylabel("Плотность вероятности")
 plt.grid(True)

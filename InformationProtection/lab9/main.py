@@ -129,50 +129,57 @@ def calculate_file_hash(filepath: str) -> bytes:
     return sha256_hash.digest()
 
 
-def elgamal_sign(hash_digest: bytes, p: int, g: int, x: int) -> Tuple[int, int]:
+def elgamal_sign(hash_digest: bytes, p: int, g: int, x: int) -> list[Tuple[int, int]]:
     """
-    Подписывает хеш по схеме Эль-Гамаля.
-    Возвращает (r, s) - подпись.
+    Подписывает хеш по схеме Эль-Гамаля побайтово.
+    Возвращает список пар (r, s) - подпись для каждого байта.
     """
-    # Выбираем случайное k
-    while True:
-        k = random.randrange(1, p - 1)
-        if extended_gcd(k, p - 1)[0] == 1:
-            break
+    signature = []
     
-    # Вычисляем r = g^k mod p
-    r = mod_pow(g, k, p)
+    for byte in hash_digest:
+        # Выбираем случайное k для каждого байта
+        while True:
+            k = random.randrange(1, p - 1)
+            if extended_gcd(k, p - 1)[0] == 1:
+                break
+        
+        # Вычисляем r = g^k mod p
+        r = mod_pow(g, k, p)
+        
+        # Вычисляем s = k^(-1) * (h - x*r) mod (p-1)
+        k_inv = mod_inverse(k, p - 1)
+        h = byte % (p - 1)
+        s = (k_inv * (h - x * r)) % (p - 1)
+        
+        signature.append((r, s))
     
-    # Вычисляем s = k^(-1) * (H - x*r) mod (p-1)
-    k_inv = mod_inverse(k, p - 1)
-    
-    # Преобразуем хеш в число
-    h = int.from_bytes(hash_digest, byteorder='big') % (p - 1)
-    
-    s = (k_inv * (h - x * r)) % (p - 1)
-    
-    return r, s
+    return signature
 
 
-def elgamal_verify(hash_digest: bytes, signature: Tuple[int, int], p: int, g: int, y: int) -> bool:
+def elgamal_verify(hash_digest: bytes, signature: list[Tuple[int, int]], p: int, g: int, y: int) -> bool:
     """
-    Проверяет подпись Эль-Гамаля.
+    Проверяет подпись Эль-Гамаля побайтово.
     Возвращает True, если подпись верна.
     """
-    r, s = signature
-    
-    # Проверяем условия
-    if r < 1 or r >= p or s < 1 or s >= p - 1:
+    if len(signature) != len(hash_digest):
         return False
     
-    # Преобразуем хеш в число
-    h = int.from_bytes(hash_digest, byteorder='big') % (p - 1)
+    for i, (r, s) in enumerate(signature):
+        # Проверяем условия
+        if r < 1 or r >= p or s < 1 or s >= p - 1:
+            return False
+        
+        # Получаем байт хеша
+        h = hash_digest[i] % (p - 1)
+        
+        # Проверяем: g^h ≡ y^r * r^s (mod p)
+        left = mod_pow(g, h, p)
+        right = (mod_pow(y, r, p) * mod_pow(r, s, p)) % p
+        
+        if left != right:
+            return False
     
-    # Проверяем: g^h ≡ y^r * r^s (mod p)
-    left = mod_pow(g, h, p)
-    right = (mod_pow(y, r, p) * mod_pow(r, s, p)) % p
-    
-    return left == right
+    return True
 
 
 def save_key(key: Tuple[int, int, int], filepath: str):
@@ -189,19 +196,21 @@ def load_key(filepath: str) -> Tuple[int, int, int]:
     return tuple(values)
 
 
-def save_signature(signature: Tuple[int, int], filepath: str):
+def save_signature(signature: list[Tuple[int, int]], filepath: str):
     """Сохраняет подпись в файл."""
     with open(filepath, 'w') as f:
-        f.write(f"{signature[0]}\n")
-        f.write(f"{signature[1]}\n")
+        for r, s in signature:
+            f.write(f"{r} {s}\n")
 
 
-def load_signature(filepath: str) -> Tuple[int, int]:
+def load_signature(filepath: str) -> list[Tuple[int, int]]:
     """Загружает подпись из файла."""
+    signature = []
     with open(filepath, 'r') as f:
-        r = int(f.readline().strip())
-        s = int(f.readline().strip())
-    return (r, s)
+        for line in f:
+            r, s = map(int, line.strip().split())
+            signature.append((r, s))
+    return signature
 
 
 if __name__ == '__main__':
@@ -209,7 +218,7 @@ if __name__ == '__main__':
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     gen_parser = subparsers.add_parser("generate", help="Сгенерировать пару ключей Эль-Гамаля")
-    gen_parser.add_argument("--bits", type=int, default=32, help="Размер простого числа в битах")
+    gen_parser.add_argument("--bits", type=int, default=128, help="Размер простого числа в битах")
     gen_parser.add_argument("--pub", default="public.key", help="Файл для сохранения открытого ключа")
     gen_parser.add_argument("--priv", default="private.key", help="Файл для сохранения закрытого ключа")
     
@@ -245,12 +254,14 @@ if __name__ == '__main__':
             
             file_hash = calculate_file_hash(args.file)
             print(f"Хеш файла (SHA-256): {file_hash.hex()}")
+            print(f"Размер хеша: {len(file_hash)} байт")
             
             signature = elgamal_sign(file_hash, p, g, x)
             
             output_file = args.out if args.out else args.file + ".sig"
             save_signature(signature, output_file)
-            print(f"Подпись (r, s) успешно создана и сохранена в: {output_file}")
+            print(f"Подпись успешно создана и сохранена в: {output_file}")
+            print(f"Размер подписи: {len(signature)} пар (r, s)")
 
         elif args.command == "verify":
             print(f"Проверка подписи для файла: {args.file}")
@@ -260,6 +271,8 @@ if __name__ == '__main__':
             signature = load_signature(args.sig)
             file_hash = calculate_file_hash(args.file)
             print(f"Хеш файла (SHA-256): {file_hash.hex()}")
+            print(f"Размер хеша: {len(file_hash)} байт")
+            print(f"Размер подписи: {len(signature)} пар (r, s)")
             
             if elgamal_verify(file_hash, signature, p, g, y):
                 print("\nРЕЗУЛЬТАТ: ПОДПИСЬ ПОДТВЕРЖДЕНА. Файл целостен и аутентичен.")

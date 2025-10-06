@@ -13,7 +13,7 @@ class MentalPoker:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("🃏 Ментальный покер - Техасский холдем")
-        self.root.geometry("1000x700")
+        self.root.geometry("1200x800")
         self.root.configure(bg='#2c3e50')
         
         # Настройка стилей
@@ -35,8 +35,7 @@ class MentalPoker:
         
         # Криптографические параметры
         self.p = 0
-        self.g = 0
-        self.player_keys = {}
+        self.player_keys = {}  # (Ci, Di) для каждого игрока
         
         self.setup_ui()
         
@@ -102,7 +101,6 @@ class MentalPoker:
         # Настройки игры
         settings_frame = ttk.LabelFrame(main_frame, text="⚙️ Настройки игры", style='Header.TLabel')
         settings_frame.pack(fill=tk.X, pady=(0, 15))
-        settings_frame.configure(style='Header.TLabel')
         
         settings_inner = ttk.Frame(settings_frame)
         settings_inner.pack(fill=tk.X, padx=10, pady=10)
@@ -190,16 +188,53 @@ class MentalPoker:
     def setup_cryptographic_parameters(self):
         """Настраивает криптографические параметры"""
         self.p = 1009
-        self.g = 2
         
-        self.log(f"Криптографические параметры: p={self.p}, g={self.g}")
+        self.log(f"Криптографические параметры: p={self.p}")
         
         # Генерируем ключи для каждого игрока
         for i in range(self.num_players):
-            key = random.randint(1, self.p - 1)
-            self.player_keys[i] = key
-            self.log(f"Игрок {i+1} получил ключ: {key}")
+            # Генерируем Ci и Di такие, что Ci * Di ≡ 1 (mod p-1)
+            while True:
+                Ci = random.randint(1, self.p - 1)
+                if self.gcd(Ci, self.p - 1) == 1:
+                    break
             
+            Di = self.mod_inverse(Ci, self.p - 1)
+            self.player_keys[i] = (Ci, Di)
+            self.log(f"Игрок {i+1} получил ключи: Ci={Ci}, Di={Di}")
+            
+    def gcd(self, a: int, b: int) -> int:
+        """Вычисляет НОД двух чисел"""
+        while b:
+            a, b = b, a % b
+        return a
+    
+    def mod_inverse(self, a: int, m: int) -> int:
+        """Вычисляет обратный элемент a^(-1) mod m"""
+        def extended_gcd(a, b):
+            if a == 0:
+                return b, 0, 1
+            gcd, x1, y1 = extended_gcd(b % a, a)
+            x = y1 - (b // a) * x1
+            y = x1
+            return gcd, x, y
+        
+        gcd, x, y = extended_gcd(a, m)
+        if gcd != 1:
+            raise ValueError("Обратный элемент не существует")
+        return x % m
+    
+    def mod_pow(self, base: int, exp: int, mod: int) -> int:
+        """Возведение в степень по модулю"""
+        result = 1
+        base %= mod
+        while exp > 0:
+            if exp % 2 == 1:
+                result = (result * base) % mod
+            base = (base * base) % mod
+            exp //= 2
+        return result
+    
     def generate_deck(self):
         """Генерирует колоду карт"""
         suits = ['♠', '♥', '♦', '♣']
@@ -213,47 +248,92 @@ class MentalPoker:
         self.log(f"Создана колода из {len(self.deck)} карт")
         
     def deal_cards(self):
-        """Раздает карты игрокам"""
+        """Раздает карты игрокам используя ментальный покер"""
         if self.game_phase != "dealing":
             messagebox.showwarning("Предупреждение", "Сначала начните игру")
             return
             
-        self.log("Начинаем раздачу карт...")
+        self.log("Начинаем раздачу карт с использованием ментального покера...")
         
-        # Перемешиваем колоду
-        random.shuffle(self.deck)
-        self.log("Колода перемешана")
+        # Шаг 1: Подготовка колоды - каждый игрок шифрует все карты
+        self.log("Шаг 1: Каждый игрок шифрует колоду своим ключом")
+        encrypted_deck = list(range(1, 53))  # Карты как числа 1-52
         
-        # Раздаем карты игрокам
+        for player_id in range(self.num_players):
+            Ci, Di = self.player_keys[player_id]
+            self.log(f"Игрок {player_id + 1} шифрует колоду ключом Ci={Ci}")
+            
+            # Шифруем каждую карту
+            for i in range(len(encrypted_deck)):
+                encrypted_deck[i] = self.mod_pow(encrypted_deck[i], Ci, self.p)
+            
+            # Перемешиваем зашифрованную колоду
+            random.shuffle(encrypted_deck)
+            self.log(f"Игрок {player_id + 1} перемешал зашифрованную колоду")
+        
+        self.encrypted_deck = encrypted_deck
+        self.log("Колода полностью зашифрована и перемешана всеми игроками")
+        
+        # Шаг 2: Раздача карт
+        self.log("Шаг 2: Раздача зашифрованных карт игрокам")
         for i in range(self.num_players):
             player_cards = []
             for j in range(self.cards_per_player):
-                card = self.deck.pop(0)
+                card = self.encrypted_deck.pop(0)
                 player_cards.append(card)
             self.player_cards[i] = player_cards
-            self.log(f"Игрок {i+1} получил карты: {', '.join(player_cards)}")
-            
-        # Выкладываем общие карты
+            self.log(f"Игрок {i+1} получил {len(player_cards)} зашифрованных карт")
+        
+        # Шаг 3: Выкладывание общих карт
         self.community_cards_revealed = []
         for i in range(self.community_cards):
-            card = self.deck.pop(0)
+            card = self.encrypted_deck.pop(0)
             self.community_cards_revealed.append(card)
-            
-        self.log(f"Общие карты: {', '.join(self.community_cards_revealed)}")
+        
+        self.log(f"Выложено {len(self.community_cards_revealed)} общих зашифрованных карт")
         
         self.update_cards_display()
         self.game_phase = "playing"
         
     def show_community_cards(self):
-        """Показывает общие карты"""
+        """Показывает общие карты (расшифровывает их)"""
         if not self.community_cards_revealed:
             messagebox.showwarning("Предупреждение", "Сначала раздайте карты")
             return
             
-        self.log("Общие карты на столе:")
-        for i, card in enumerate(self.community_cards_revealed):
-            self.log(f"  {i+1}. {card}")
+        self.log("Расшифрование общих карт...")
+        self.log("Все игроки по очереди расшифровывают карты своими ключами")
+        
+        # Расшифровываем общие карты
+        decrypted_community = self.community_cards_revealed.copy()
+        
+        # Каждый игрок расшифровывает своими ключами (в обратном порядке)
+        for player_id in range(self.num_players - 1, -1, -1):
+            Ci, Di = self.player_keys[player_id]
+            self.log(f"Игрок {player_id + 1} расшифровывает ключом Di={Di}")
             
+            for i in range(len(decrypted_community)):
+                decrypted_community[i] = self.mod_pow(decrypted_community[i], Di, self.p)
+        
+        # Преобразуем числа обратно в карты
+        suits = ['♠', '♥', '♦', '♣']
+        ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+        
+        community_cards = []
+        for card_num in decrypted_community:
+            suit_idx = (card_num - 1) // 13
+            rank_idx = (card_num - 1) % 13
+            card = f"{ranks[rank_idx]}{suits[suit_idx]}"
+            community_cards.append(card)
+        
+        self.log("Общие карты на столе:")
+        for i, card in enumerate(community_cards):
+            card_display = self.format_card(card)
+            self.log(f"  {i+1}. {card_display}")
+        
+        # Обновляем отображение
+        self.update_cards_display_with_community(community_cards)
+        
     def determine_winner(self):
         """Определяет победителя"""
         if self.game_phase != "playing":
@@ -262,13 +342,13 @@ class MentalPoker:
             
         self.log("Определяем победителя...")
         
+        # В реальной игре здесь была бы сложная логика оценки покерных комбинаций
+        # Для демонстрации выбираем случайного победителя
         winner = random.randint(0, self.num_players - 1)
         
         self.log(f"Победитель: Игрок {winner + 1}")
-        self.log("Карты победителя:")
-        for card in self.player_cards[winner]:
-            self.log(f"  {card}")
-            
+        self.log("В реальной игре здесь была бы оценка покерных комбинаций")
+        
         self.game_phase = "finished"
         
     def update_cards_display(self):
@@ -278,15 +358,31 @@ class MentalPoker:
         # Отображение карт игроков
         for i in range(self.num_players):
             self.cards_text.insert(tk.END, f"👤 Игрок {i+1}:\n", 'player_header')
-            for card in self.player_cards[i]:
-                card_display = self.format_card(card)
-                self.cards_text.insert(tk.END, f"  {card_display}\n")
+            for j, card in enumerate(self.player_cards[i]):
+                self.cards_text.insert(tk.END, f"  Карта {j+1}: {card} (зашифрована)\n")
             self.cards_text.insert(tk.END, "\n")
             
         # Отображение общих карт
         if self.community_cards_revealed:
             self.cards_text.insert(tk.END, "🌐 Общие карты на столе:\n", 'community_header')
             for i, card in enumerate(self.community_cards_revealed):
+                self.cards_text.insert(tk.END, f"  {i+1}. {card} (зашифрована)\n")
+                
+    def update_cards_display_with_community(self, community_cards):
+        """Обновляет отображение с расшифрованными общими картами"""
+        self.cards_text.delete(1.0, tk.END)
+        
+        # Отображение карт игроков
+        for i in range(self.num_players):
+            self.cards_text.insert(tk.END, f"👤 Игрок {i+1}:\n", 'player_header')
+            for j, card in enumerate(self.player_cards[i]):
+                self.cards_text.insert(tk.END, f"  Карта {j+1}: {card} (зашифрована)\n")
+            self.cards_text.insert(tk.END, "\n")
+            
+        # Отображение общих карт
+        if community_cards:
+            self.cards_text.insert(tk.END, "🌐 Общие карты на столе:\n", 'community_header')
+            for i, card in enumerate(community_cards):
                 card_display = self.format_card(card)
                 self.cards_text.insert(tk.END, f"  {i+1}. {card_display}\n")
                 

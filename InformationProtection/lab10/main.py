@@ -2,7 +2,7 @@ import hashlib
 import random
 import sys
 import argparse
-from typing import Tuple
+from typing import Tuple, list
 
 
 def mod_pow(base: int, exp: int, mod: int) -> int:
@@ -113,55 +113,62 @@ def calculate_file_hash(filepath: str) -> bytes:
     return sha256_hash.digest()
 
 
-def gost_sign(hash_digest: bytes, p: int, q: int, a: int, x: int) -> Tuple[int, int]:
+def gost_sign(hash_digest: bytes, p: int, q: int, a: int, x: int) -> list[Tuple[int, int]]:
     """
-    Подписывает хеш по схеме ГОСТ Р 34.10-94.
-    Возвращает (r, s) - подпись.
+    Подписывает хеш по схеме ГОСТ Р 34.10-94 побайтово.
+    Возвращает список пар (r, s) - подпись для каждого байта.
     """
-    # Преобразуем хеш в число
-    h = int.from_bytes(hash_digest, byteorder='big') % q
+    signature = []
     
-    # Выбираем случайное k
-    k = random.randrange(1, q)
+    for byte in hash_digest:
+        # Выбираем случайное k для каждого байта
+        k = random.randrange(1, q)
+        
+        # Вычисляем r = (a^k mod p) mod q
+        r = mod_pow(a, k, p) % q
+        
+        # Вычисляем s = (k*h + x*r) mod q (формула ГОСТ)
+        h = byte % q
+        s = (k * h + x * r) % q
+        
+        signature.append((r, s))
     
-    # Вычисляем r = (a^k mod p) mod q
-    r = mod_pow(a, k, p) % q
-    
-    # Вычисляем s = (k^(-1) * (h + x*r)) mod q
-    k_inv = mod_inverse(k, q)
-    s = (k_inv * (h + x * r)) % q
-    
-    return r, s
+    return signature
 
 
-def gost_verify(hash_digest: bytes, signature: Tuple[int, int], p: int, q: int, a: int, y: int) -> bool:
+def gost_verify(hash_digest: bytes, signature: list[Tuple[int, int]], p: int, q: int, a: int, y: int) -> bool:
     """
-    Проверяет подпись ГОСТ Р 34.10-94.
+    Проверяет подпись ГОСТ Р 34.10-94 побайтово.
     Возвращает True, если подпись верна.
     """
-    r, s = signature
-    
-    # Проверяем условия
-    if r < 1 or r >= q or s < 1 or s >= q:
+    if len(signature) != len(hash_digest):
         return False
     
-    # Преобразуем хеш в число
-    h = int.from_bytes(hash_digest, byteorder='big') % q
+    for i, (r, s) in enumerate(signature):
+        # Проверяем условия
+        if r < 1 or r >= q or s < 1 or s >= q:
+            return False
+        
+        # Получаем байт хеша
+        h = hash_digest[i] % q
+        
+        # Вычисляем h^(-1) mod q
+        h_inv = mod_inverse(h, q)
+        
+        # Вычисляем u1 = (s * h_inv) mod q
+        u1 = (s * h_inv) % q
+        
+        # Вычисляем u2 = (-r * h_inv) mod q
+        u2 = ((-r) * h_inv) % q
+        
+        # Вычисляем v = (a^u1 * y^u2 mod p) mod q
+        v = (mod_pow(a, u1, p) * mod_pow(y, u2, p)) % p % q
+        
+        # Проверяем: v = r
+        if v != r:
+            return False
     
-    # Вычисляем v = s^(-1) mod q
-    v = mod_inverse(s, q)
-    
-    # Вычисляем z1 = (h * v) mod q
-    z1 = (h * v) % q
-    
-    # Вычисляем z2 = (r * v) mod q
-    z2 = (r * v) % q
-    
-    # Вычисляем u = (a^z1 * y^z2 mod p) mod q
-    u = (mod_pow(a, z1, p) * mod_pow(y, z2, p)) % p % q
-    
-    # Проверяем: u = r
-    return u == r
+    return True
 
 
 def save_key(key: Tuple[int, int, int, int], filepath: str):
@@ -178,19 +185,28 @@ def load_key(filepath: str) -> Tuple[int, int, int, int]:
     return tuple(values)
 
 
-def save_signature(signature: Tuple[int, int], filepath: str):
+def save_signature(signature: list[Tuple[int, int]], filepath: str):
     """Сохраняет подпись в файл."""
     with open(filepath, 'w') as f:
-        f.write(f"{signature[0]}\n")
-        f.write(f"{signature[1]}\n")
+        for r, s in signature:
+            f.write(f"{r} {s}\n")
 
 
-def load_signature(filepath: str) -> Tuple[int, int]:
+def load_signature(filepath: str) -> list[Tuple[int, int]]:
     """Загружает подпись из файла."""
+    signature = []
     with open(filepath, 'r') as f:
-        r = int(f.readline().strip())
-        s = int(f.readline().strip())
-    return (r, s)
+        for line in f:
+            line = line.strip()
+            if line.startswith('(') and line.endswith(')'):
+                # Формат (r, s)
+                content = line[1:-1]  # Убираем скобки
+                r, s = map(int, content.split(', '))
+            else:
+                # Формат r s
+                r, s = map(int, line.split())
+            signature.append((r, s))
+    return signature
 
 
 if __name__ == '__main__':
@@ -198,7 +214,7 @@ if __name__ == '__main__':
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     gen_parser = subparsers.add_parser("generate", help="Сгенерировать пару ключей ГОСТ")
-    gen_parser.add_argument("--bits", type=int, default=32, help="Размер простого числа в битах")
+    gen_parser.add_argument("--bits", type=int, default=256, help="Размер простого числа q в битах (p будет 1024 бита)")
     gen_parser.add_argument("--pub", default="public.key", help="Файл для сохранения открытого ключа")
     gen_parser.add_argument("--priv", default="private.key", help="Файл для сохранения закрытого ключа")
     
@@ -216,7 +232,7 @@ if __name__ == '__main__':
 
     try:
         if args.command == "generate":
-            print(f"Генерация {args.bits}-битных ключей ГОСТ Р 34.10-94...")
+            print(f"Генерация ключей ГОСТ Р 34.10-94 (q={args.bits} бит, p=1024 бита)...")
             p, q, a, x, y = generate_gost_keys(args.bits)
             
             public_key = (p, q, a, y)
@@ -234,12 +250,14 @@ if __name__ == '__main__':
             
             file_hash = calculate_file_hash(args.file)
             print(f"Хеш файла (SHA-256): {file_hash.hex()}")
+            print(f"Размер хеша: {len(file_hash)} байт")
             
             signature = gost_sign(file_hash, p, q, a, x)
             
             output_file = args.out if args.out else args.file + ".sig"
             save_signature(signature, output_file)
-            print(f"Подпись (r, s) успешно создана и сохранена в: {output_file}")
+            print(f"Подпись успешно создана и сохранена в: {output_file}")
+            print(f"Размер подписи: {len(signature)} пар (r, s)")
 
         elif args.command == "verify":
             print(f"Проверка подписи для файла: {args.file}")
@@ -249,6 +267,8 @@ if __name__ == '__main__':
             signature = load_signature(args.sig)
             file_hash = calculate_file_hash(args.file)
             print(f"Хеш файла (SHA-256): {file_hash.hex()}")
+            print(f"Размер хеша: {len(file_hash)} байт")
+            print(f"Размер подписи: {len(signature)} пар (r, s)")
             
             if gost_verify(file_hash, signature, p, q, a, y):
                 print("\nРЕЗУЛЬТАТ: ПОДПИСЬ ПОДТВЕРЖДЕНА. Файл целостен и аутентичен.")
