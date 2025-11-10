@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def generate_pss(nid: int) -> np.ndarray:
     """
     Генерирует первичный сигнал синхронизации (PSS) для заданного NID.
@@ -22,15 +23,13 @@ def plot_constellations(pss_sequences: dict):
     Строит и сохраняет констелляционные диаграммы для PSS.
     """
     fig, axes = plt.subplots(3, 3, figsize=(12, 12))
-    fig.suptitle('Констелляционные диаграммы PSS', fontsize=16, y=0.95)
+    fig.suptitle('Диаграммы PSS', fontsize=16, y=0.95)
 
     for nid, pss in pss_sequences.items():
         axes[nid, 0].plot(pss[:31].real, pss[:31].imag, 'ko', markerfacecolor='k')
         axes[nid, 0].set_title(f'NID={nid}, n=0..30')
-
         axes[nid, 1].plot(pss[31:].real, pss[31:].imag, 'bo', markerfacecolor='b')
         axes[nid, 1].set_title(f'NID={nid}, n=31..61')
-
         axes[nid, 2].plot(pss.real, pss.imag, 'ro', markerfacecolor='r')
         axes[nid, 2].set_title(f'NID={nid}, n=0..61')
 
@@ -67,6 +66,37 @@ def plot_cross_correlation(pss_sequences: dict):
     axes[-1].set_xlabel('Сдвиг (lags)')
     plt.tight_layout(rect=[0, 0, 1, 0.96])
 
+def plot_correlation_matrix(pss_sequences: dict):
+    """
+    Вычисляет и строит матрицу пиковых корреляций между всеми PSS.
+    """
+    nids = list(pss_sequences.keys())
+    num_seqs = len(nids)
+    corr_matrix = np.zeros((num_seqs, num_seqs))
+    for i in range(num_seqs):
+        for j in range(num_seqs):
+            seq1 = pss_sequences[nids[i]]
+            seq2 = pss_sequences[nids[j]]
+            correlation_result = np.correlate(seq1, seq2, mode='full')
+            peak_value = np.max(np.abs(correlation_result))
+            corr_matrix[i, j] = peak_value
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    im = ax.imshow(corr_matrix, cmap='viridis')
+    cbar = fig.colorbar(im)
+    cbar.set_label('Пиковое значение корреляции', rotation=270, labelpad=15)
+    ax.set_xticks(np.arange(num_seqs))
+    ax.set_yticks(np.arange(num_seqs))
+    ax.set_xticklabels([f'PSS (NID={n})' for n in nids])
+    ax.set_yticklabels([f'PSS (NID={n})' for n in nids])
+    ax.set_title('Матрица пиковых корреляций PSS')
+    for i in range(num_seqs):
+        for j in range(num_seqs):
+            ax.text(j, i, f'{corr_matrix[i, j]:.1f}',
+                    ha='center', va='center', color='white')
+
+    fig.tight_layout()
+
 if __name__ == "__main__":
     all_pss = {nid: generate_pss(nid) for nid in range(3)}
     try:
@@ -84,4 +114,6 @@ if __name__ == "__main__":
 
     plot_constellations(all_pss)
     plot_cross_correlation(all_pss)
+    plot_correlation_matrix(all_pss)
+
     plt.show()
