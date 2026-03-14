@@ -1,0 +1,43 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    container_name: itp-server
+    hostname: server
+    volumes:
+      - ./:/work
+      - itp-keys:/keys
+      - itp-reports:/etc/ansible/IT-Planet
+    networks:
+      - itp-net
+
+  client1:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: itp-client1
+    hostname: client1
+    volumes:
+      - itp-keys:/keys
+    networks:
+      - itp-net
+
+  client2:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: itp-client2
+    hostname: client2
+    volumes:
+      - itp-keys:/keys
+    networks:
+      - itp-net
+
+volumes:
+  itp-keys:
+  itp-reports:
+
+networks:
+  itp-net:
+    driver: bridge

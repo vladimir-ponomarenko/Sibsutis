@@ -1,0 +1,50 @@
+---
+- name: Collect client info and store on server
+  hosts: clients
+  gather_facts: false
+  vars:
+    report_dir: /etc/ansible/IT-Planet
+
+  tasks:
+    - name: Ensure report directory exists on server
+      ansible.builtin.file:
+        path: "{{ report_dir }}"
+        state: directory
+        mode: "0755"
+      delegate_to: server
+      run_once: true
+
+    - name: Get client hostname
+      ansible.builtin.command: hostname
+      register: client_hostname
+      changed_when: false
+
+    - name: Get client IP addresses
+      ansible.builtin.shell: "hostname -I | xargs"
+      register: client_ips
+      changed_when: false
+
+    - name: Get OS version
+      ansible.builtin.shell: ". /etc/os-release && echo \"$PRETTY_NAME\""
+      register: os_version
+      changed_when: false
+
+    - name: Get free space on root filesystem
+      ansible.builtin.shell: "df -h / --output=avail | tail -1"
+      register: disk_free_root
+      changed_when: false
+
+    - name: Build report content
+      ansible.builtin.set_fact:
+        report_content: |
+          client_name: {{ client_hostname.stdout | trim }}
+          client_ips: {{ client_ips.stdout | trim }}
+          os_version: {{ os_version.stdout | trim }}
+          disk_free_root: {{ disk_free_root.stdout | trim }}
+
+    - name: Write report to server
+      ansible.builtin.copy:
+        content: "{{ report_content }}"
+        dest: "{{ report_dir }}/{{ inventory_hostname }}.txt"
+        mode: "0644"
+      delegate_to: server

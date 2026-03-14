@@ -1,0 +1,20 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       ansible openssh-client python3 ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m -s /bin/bash ansible
+
+RUN mkdir -p /home/ansible/.ssh /keys \
+    && chmod 700 /home/ansible/.ssh
+
+COPY docker/entrypoint-server.sh /usr/local/bin/entrypoint-server
+RUN chmod +x /usr/local/bin/entrypoint-server
+
+WORKDIR /work
+
+CMD ["/usr/local/bin/entrypoint-server"]
