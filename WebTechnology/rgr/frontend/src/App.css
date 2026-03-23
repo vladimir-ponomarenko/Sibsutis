@@ -1,0 +1,270 @@
+.app {
+  background-image: url("1.png");
+  background-size: cover;
+  background-position: center;
+  min-height: 100vh;
+  color: #ffffff;
+  font-family: "Proxima Nova", "Inter", sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 32px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.logo svg {
+  height: 44px;
+  width: auto;
+}
+
+.header-nav {
+  display: flex;
+  gap: 10px;
+}
+
+.header-btn {
+  background: #ffffff;
+  color: #1a1a8d;
+  padding: 6px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  transition: background 0.2s ease, transform 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+}
+
+.header-btn:hover {
+  transform: translateY(-1px);
+}
+
+.header-btn.active {
+  background: rgba(132, 211, 255, 0.9);
+  color: #0b1a4a;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.username {
+  font-weight: 600;
+}
+
+.logout-icon {
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.logout-icon:hover {
+  color: #ffb3b3;
+}
+
+.logout-btn {
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid #7fb9ff;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.logout-btn:hover {
+  background-color: #ffffff;
+  color: #1a1a8d;
+}
+
+.app-content {
+  min-width: 0;
+}
+
+.register-btn {
+  background: transparent;
+  color: white;
+  border: 1px solid #7fb9ff;
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.user-icon {
+  position: relative;
+  width: 36px;
+  height: 36px;
+}
+
+.user-icon img {
+  position: absolute;
+  inset: 0;
+}
+
+.exit-icon {
+  position: relative;
+  width: 36px;
+  height: 36px;
+}
+
+.exit-icon img {
+  position: absolute;
+  inset: 0;
+}
+
+.exit-icon .exit-line {
+  left: 12px;
+  top: 18px;
+  width: 18px;
+}
+
+.exit-icon .exit-arrow {
+  left: 16px;
+  top: 12px;
+  width: 9px;
+}
+
+.login-form,
+.register-form,
+.remember-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 24px 28px;
+  background-color: white;
+  border-radius: 12px;
+  width: 460px;
+  margin: 60px auto;
+  color: #202020;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+}
+
+.login-form h2,
+.register-form h2,
+.remember-form h2 {
+  margin-bottom: 12px;
+  color: #202020;
+  font-size: 18px;
+  text-align: center;
+}
+
+.login-form input,
+.register-form input,
+.remember-form input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d3d7e7;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.login-btn,
+.register-btn {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.login-btn {
+  background-color: #1e22aa;
+  color: white;
+}
+
+.login-btn:hover {
+  background-color: #14187d;
+}
+
+.register-btn {
+  background-color: #e9f3ff;
+  color: #1e22aa;
+  border: 1px solid #9cc5ff;
+}
+
+.register-btn:hover {
+  background-color: #d9ebff;
+}
+
+.status-text {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #1e22aa;
+  text-align: center;
+}
+
+.auth-tabs {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.auth-tab {
+  background: transparent;
+  border: none;
+  color: #1e22aa;
+  font-size: 13px;
+  cursor: pointer;
+  padding-bottom: 4px;
+  border-bottom: 2px solid transparent;
+}
+
+.auth-tab.active {
+  border-bottom: 2px solid #1e22aa;
+  font-weight: 600;
+}
+
+.header-register {
+  background: transparent;
+  color: white;
+  border: 1px solid #7fb9ff;
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.header-register:hover {
+  background-color: white;
+  color: #1a1a8d;
+}

@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: rgr_video_db
+    environment:
+      POSTGRES_DB: videoplatform
+      POSTGRES_USER: video_user
+      POSTGRES_PASSWORD: video_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

@@ -1,3 +1,17 @@
 .vscode/*
 *.mat
 MobileNextgenSystems
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+.env
+.env.*
+media/
+node_modules/
+WebTechnology/rgr/frontend/node_modules/
+WebTechnology/rgr/frontend/dist/
+*.log
+.DS_Store
